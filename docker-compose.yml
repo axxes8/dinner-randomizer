@@ -1,0 +1,12 @@
+services:
+  dinner-randomizer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dinner-randomizer:latest
+    container_name: dinner-randomizer
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
