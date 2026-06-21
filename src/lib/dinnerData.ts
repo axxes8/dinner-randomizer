@@ -106,6 +106,89 @@ export const dinnerLists = {
   ],
 } as const;
 
+export const lunchLists = {
+  Sandwiches: [
+    "PB&J",
+    "Grilled Cheese",
+    "BLT",
+    "Turkey Sandwich",
+    "Ham and Cheese",
+    "Tuna Melt",
+    "Club Sandwich",
+    "Egg Salad Sandwich",
+  ],
+  Salads: [
+    "Caesar Salad",
+    "Chicken Salad",
+    "Cobb Salad",
+    "Garden Salad",
+    "Greek Salad",
+    "Taco Salad",
+  ],
+  "Quick & Easy": [
+    "Mac and Cheese",
+    "Ramen",
+    "Soup and Sandwich",
+    "Leftovers",
+    "Quesadillas",
+    "Hot Dogs",
+    "Chicken Nuggets",
+    "Pizza Rolls",
+    "Cup Noodles",
+  ],
+  Wraps: [
+    "Chicken Wrap",
+    "BLT Wrap",
+    "Turkey Ranch Wrap",
+    "Veggie Wrap",
+    "Burrito",
+  ],
+  Soups: [
+    "Tomato Soup",
+    "Chicken Noodle Soup",
+    "Chili",
+    "Clam Chowder",
+    "Loaded Baked Potato Soup",
+  ],
+} as const;
+
+export const breakfastLists = {
+  "Eggs & Savory": [
+    "Scrambled Eggs",
+    "Fried Eggs",
+    "Omelette",
+    "Breakfast Burritos",
+    "Egg Sandwich",
+    "Bacon and Eggs",
+    "Avocado Toast",
+    "Biscuits and Gravy",
+  ],
+  "Pancakes & Waffles": [
+    "Pancakes",
+    "Waffles",
+    "French Toast",
+    "Crepes",
+    "Cinnamon Roll French Toast",
+    "Strawberry Cream Cheese French Toast Rollups",
+  ],
+  "Cereal & Quick": [
+    "Cereal",
+    "Oatmeal",
+    "Yogurt Parfait",
+    "Granola",
+    "Toast and Peanut Butter",
+    "Bagel with Cream Cheese",
+    "Fruit and Yogurt",
+  ],
+  "Baked Goods": [
+    "Cinnamon Rolls",
+    "Muffins",
+    "Banana Bread",
+    "Donuts",
+    "Scones",
+  ],
+} as const;
+
 export type ListKey = keyof typeof dinnerLists;
 
 // Map moment day index (0=Sun … 6=Sat) to a list key
@@ -133,4 +216,36 @@ export const DAY_COLORS: Record<number, { bg: string; border: string; header: st
 export function pickRandom<T>(items: readonly T[], exclude?: T): T {
   const pool = exclude !== undefined ? items.filter((i) => i !== exclude) : [...items];
   return pool[Math.floor(Math.random() * pool.length)];
+}
+
+export type MealLists = {
+  dinner: Record<string, string[]>;
+  lunch: Record<string, string[]>;
+  breakfast: Record<string, string[]>;
+};
+
+export type DaySchedule = Record<number, string[]>;
+
+export const DEFAULT_DAY_SCHEDULE: DaySchedule = {
+  0: ["Weekend"],
+  1: ["Monday"],
+  2: ["Tuesday"],
+  3: ["Wednesday"],
+  4: ["Thursday"],
+  5: ["Friday"],
+  6: ["Weekend"],
+};
+
+export function getDefaultMealLists(): MealLists {
+  return {
+    dinner: Object.fromEntries(
+      Object.entries(dinnerLists).map(([k, v]) => [k, [...v]])
+    ),
+    lunch: Object.fromEntries(
+      Object.entries(lunchLists).map(([k, v]) => [k, [...v]])
+    ),
+    breakfast: Object.fromEntries(
+      Object.entries(breakfastLists).map(([k, v]) => [k, [...v]])
+    ),
+  };
 }

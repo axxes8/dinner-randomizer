@@ -3,16 +3,16 @@
 import { useState, useCallback, useEffect } from "react";
 import moment, { Moment } from "moment-timezone";
 import {
-  dinnerLists,
-  DAY_TO_LIST,
   DAY_COLORS,
   pickRandom,
 } from "@/lib/dinnerData";
+import { useMeals } from "@/lib/MealsContext";
 
 const TIMEZONE = "America/Denver";
 const WEEK_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-type DayAssignments = Record<string, string>; // "YYYY-MM-DD" -> meal name
+type DayMeals = { breakfast: string; lunch: string; dinner: string };
+type DayAssignments = Record<string, DayMeals>; // "YYYY-MM-DD" -> meals
 type WeeklySpecial = { dessert: string; newThing: string };
 
 function buildCalendarWeeks(month: Moment): Moment[][] {
@@ -32,37 +32,50 @@ function buildCalendarWeeks(month: Moment): Moment[][] {
 }
 
 function randomizeMonth(
-  month: Moment
+  month: Moment,
+  dinnerData: Record<string, string[]>,
+  lunchData: Record<string, string[]>,
+  breakfastData: Record<string, string[]>,
+  schedule: Record<number, string[]>
 ): { days: DayAssignments; specials: WeeklySpecial[] } {
   const weeks = buildCalendarWeeks(month);
   const days: DayAssignments = {};
   const specials: WeeklySpecial[] = [];
 
+  const allBreakfast = Object.values(breakfastData).flat();
+  const allLunch = Object.values(lunchData).flat();
+
   for (const week of weeks) {
-    // Assign a meal to each day in this week that belongs to the current month
-    let satMeal: string | undefined;
+    let satDinner: string | undefined;
     for (const day of week) {
       if (!day.isSame(month, "month")) continue;
       const dayIdx = day.day();
-      const listKey = DAY_TO_LIST[dayIdx];
-      const list = dinnerLists[listKey] as readonly string[];
+      const dateKey = day.format("YYYY-MM-DD");
 
-      let meal: string;
-      if (dayIdx === 0 && satMeal) {
-        // Sunday — avoid same as Saturday
-        meal = pickRandom(list, satMeal);
-      } else {
-        meal = pickRandom(list);
+      // Dinner — uses per-day schedule
+      const dinnerList = (schedule[dayIdx] ?? []).flatMap((key) => dinnerData[key] ?? []);
+      let dinner = "";
+      if (dinnerList.length > 0) {
+        dinner =
+          dayIdx === 0 && satDinner
+            ? pickRandom(dinnerList, satDinner)
+            : pickRandom(dinnerList);
       }
+      if (dayIdx === 6) satDinner = dinner;
 
-      if (dayIdx === 6) satMeal = meal;
-      days[day.format("YYYY-MM-DD")] = meal;
+      // Breakfast + Lunch — drawn from full combined pools
+      const breakfast = allBreakfast.length > 0 ? pickRandom(allBreakfast) : "";
+      const lunch = allLunch.length > 0 ? pickRandom(allLunch) : "";
+
+      days[dateKey] = { breakfast, lunch, dinner };
     }
 
     // One dessert + one new thing per calendar week
+    const dessertList = dinnerData.Dessert ?? [];
+    const newThingList = dinnerData.NewThings ?? [];
     specials.push({
-      dessert: pickRandom(dinnerLists.Dessert as readonly string[]),
-      newThing: pickRandom(dinnerLists.NewThings as readonly string[]),
+      dessert: dessertList.length > 0 ? pickRandom(dessertList) : "",
+      newThing: newThingList.length > 0 ? pickRandom(newThingList) : "",
     });
   }
 
@@ -70,6 +83,11 @@ function randomizeMonth(
 }
 
 export default function DinnerCalendar() {
+  const { lists, schedule, loaded } = useMeals();
+  const dinnerData = lists.dinner;
+  const lunchData = lists.lunch;
+  const breakfastData = lists.breakfast;
+
   const [month, setMonth] = useState<Moment>(() =>
     moment().tz(TIMEZONE).startOf("month")
   );
@@ -79,11 +97,12 @@ export default function DinnerCalendar() {
     specials: WeeklySpecial[];
   }>({ days: {}, specials: [] });
 
-  // Populate on first client render
+  // Populate once meal lists are loaded from server
   useEffect(() => {
-    setAssignments(randomizeMonth(month));
+    if (!loaded) return;
+    setAssignments(randomizeMonth(month, dinnerData, lunchData, breakfastData, schedule));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loaded]);
 
   const { days, specials } = assignments;
 
@@ -91,29 +110,40 @@ export default function DinnerCalendar() {
   const today = moment().tz(TIMEZONE).format("YYYY-MM-DD");
 
   const handleRandomize = useCallback(() => {
-    setAssignments(randomizeMonth(month));
-  }, [month]);
+    setAssignments(randomizeMonth(month, dinnerData, lunchData, breakfastData, schedule));
+  }, [month, dinnerData, lunchData, breakfastData, schedule]);
 
-  const handleRandomizeDay = useCallback(
-    (dateKey: string, dayIdx: number) => {
-      const listKey = DAY_TO_LIST[dayIdx];
-      const list = dinnerLists[listKey] as readonly string[];
-      const newMeal = pickRandom(list, days[dateKey]);
-      setAssignments((prev) => ({
-        ...prev,
-        days: { ...prev.days, [dateKey]: newMeal },
-      }));
+  const handleRandomizeMeal = useCallback(
+    (dateKey: string, mealType: "breakfast" | "lunch" | "dinner", dayIdx: number) => {
+      setAssignments((prev) => {
+        const current = prev.days[dateKey] ?? { breakfast: "", lunch: "", dinner: "" };
+        let pool: string[];
+        if (mealType === "dinner") {
+          pool = (schedule[dayIdx] ?? []).flatMap((key) => dinnerData[key] ?? []);
+        } else if (mealType === "breakfast") {
+          pool = Object.values(breakfastData).flat();
+        } else {
+          pool = Object.values(lunchData).flat();
+        }
+        if (pool.length === 0) return prev;
+        const newValue = pickRandom(pool, current[mealType]);
+        return {
+          ...prev,
+          days: { ...prev.days, [dateKey]: { ...current, [mealType]: newValue } },
+        };
+      });
     },
-    [days]
+    [dinnerData, lunchData, breakfastData, schedule]
   );
   const handleRandomizeSpecial = useCallback(
     (weekIdx: number, type: "dessert" | "newThing") => {
       setAssignments((prev) => {
-        const updated = [...prev.specials];
         const src =
           type === "dessert"
-            ? (dinnerLists.Dessert as readonly string[])
-            : (dinnerLists.NewThings as readonly string[]);
+            ? (dinnerData.Dessert ?? [])
+            : (dinnerData.NewThings ?? []);
+        if (src.length === 0) return prev;
+        const updated = [...prev.specials];
         updated[weekIdx] = {
           ...updated[weekIdx],
           [type]: pickRandom(src, updated[weekIdx][type]),
@@ -121,19 +151,19 @@ export default function DinnerCalendar() {
         return { ...prev, specials: updated };
       });
     },
-    []
+    [dinnerData]
   );
 
   const prevMonth = () => {
     const m = month.clone().subtract(1, "month");
     setMonth(m);
-    setAssignments(randomizeMonth(m));
+    setAssignments(randomizeMonth(m, dinnerData, lunchData, breakfastData, schedule));
   };
 
   const nextMonth = () => {
     const m = month.clone().add(1, "month");
     setMonth(m);
-    setAssignments(randomizeMonth(m));
+    setAssignments(randomizeMonth(m, dinnerData, lunchData, breakfastData, schedule));
   };
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -169,19 +199,12 @@ export default function DinnerCalendar() {
 
         {/* Legend */}
         <div className="flex flex-wrap gap-2 mb-4 text-xs font-medium">
-          {[
-            { label: "Weekend", color: "bg-orange-200" },
-            { label: "Pasta Mon", color: "bg-blue-200" },
-            { label: "Mexican Tue", color: "bg-yellow-200" },
-            { label: "Rice/Asian Wed", color: "bg-purple-200" },
-            { label: "Breakfast Thu", color: "bg-amber-200" },
-            { label: "Budget Fri", color: "bg-rose-200" },
-          ].map(({ label, color }) => (
+          {[1, 2, 3, 4, 5, 6, 0].map((dayIdx) => (
             <span
-              key={label}
-              className={`${color} px-2 py-1 rounded-full text-gray-700`}
+              key={dayIdx}
+              className={`${DAY_COLORS[dayIdx].header} px-2 py-1 rounded-full text-gray-700`}
             >
-              {label}
+              {WEEK_DAYS[dayIdx]}: {(schedule[dayIdx] ?? []).join(", ")}
             </span>
           ))}
         </div>
@@ -211,27 +234,21 @@ export default function DinnerCalendar() {
                   const isToday = dateKey === today;
                   const dayIdx = day.day();
                   const colors = DAY_COLORS[dayIdx];
-                  const meal = days[dateKey];
+                  const dayMeals = days[dateKey];
 
                   return (
                     <div
                       key={dateKey}
-                      onClick={() =>
-                        inMonth && handleRandomizeDay(dateKey, dayIdx)
-                      }
-                      title={inMonth ? "Click to re-roll this day" : undefined}
                       className={[
-                        "border-r border-gray-100 last:border-r-0 min-h-24 p-1.5 flex flex-col",
+                        "border-r border-gray-100 last:border-r-0 min-h-32 p-1.5 flex flex-col",
                         inMonth ? colors.bg : "bg-gray-50",
-                        inMonth
-                          ? "cursor-pointer hover:brightness-95 transition-all"
-                          : "opacity-40",
+                        inMonth ? "" : "opacity-40",
                       ].join(" ")}
                     >
                       {/* Day number */}
                       <div
                         className={[
-                          "text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full mb-1",
+                          "text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full mb-1 shrink-0",
                           isToday
                             ? "bg-indigo-600 text-white"
                             : inMonth
@@ -242,11 +259,43 @@ export default function DinnerCalendar() {
                         {day.date()}
                       </div>
 
-                      {/* Meal name */}
-                      {inMonth && meal && (
-                        <span className="text-xs leading-tight text-gray-800 font-medium line-clamp-3">
-                          {meal}
-                        </span>
+                      {/* Meals */}
+                      {inMonth && dayMeals && (
+                        <div className="flex flex-col gap-0.5 flex-1">
+                          {dayMeals.breakfast && (
+                            <button
+                              onClick={() =>
+                                handleRandomizeMeal(dateKey, "breakfast", dayIdx)
+                              }
+                              className="text-xs leading-snug text-left text-amber-700 hover:text-amber-900 font-medium line-clamp-1 transition-colors"
+                              title="Click to re-roll breakfast"
+                            >
+                              🍳 {dayMeals.breakfast}
+                            </button>
+                          )}
+                          {dayMeals.lunch && (
+                            <button
+                              onClick={() =>
+                                handleRandomizeMeal(dateKey, "lunch", dayIdx)
+                              }
+                              className="text-xs leading-snug text-left text-green-700 hover:text-green-900 font-medium line-clamp-1 transition-colors"
+                              title="Click to re-roll lunch"
+                            >
+                              🥪 {dayMeals.lunch}
+                            </button>
+                          )}
+                          {dayMeals.dinner && (
+                            <button
+                              onClick={() =>
+                                handleRandomizeMeal(dateKey, "dinner", dayIdx)
+                              }
+                              className="text-xs leading-snug text-left text-gray-800 hover:text-gray-600 font-medium line-clamp-2 transition-colors"
+                              title="Click to re-roll dinner"
+                            >
+                              🍽️ {dayMeals.dinner}
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   );
@@ -279,7 +328,7 @@ export default function DinnerCalendar() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-4">
-          Click any day or special to re-roll just that item.
+          Click any meal or special to re-roll just that item.
         </p>
       </div>
     </div>

@@ -38,4 +38,8 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# local meal data (written by dev server)
+/data
+
 next-env.d.ts

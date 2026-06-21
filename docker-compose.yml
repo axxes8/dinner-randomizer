@@ -10,3 +10,8 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
+    volumes:
+      - meals_data:/app/data
+
+volumes:
+  meals_data:
