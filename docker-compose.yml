@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ghcr.io/axxes8/image-name:latest
+    image: ghcr.io/axxes8/dinner-randomizer:latest
     container_name: dinner-randomizer
     ports:
       - "3000:3000"
