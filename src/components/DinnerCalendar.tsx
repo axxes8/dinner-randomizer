@@ -133,6 +133,7 @@ export default function DinnerCalendar() {
     days: DayAssignments;
     specials: WeeklySpecial[];
   }>({ days: {}, specials: [] });
+  const [mobileWeekIndex, setMobileWeekIndex] = useState(0);
 
   // Populate once meal lists are loaded from server
   useEffect(() => {
@@ -146,6 +147,8 @@ export default function DinnerCalendar() {
   const { days, specials } = assignments;
 
   const weeks = buildCalendarWeeks(month);
+  const mobileWeeks = weeks.filter((week) => week.some((day) => day.isSame(month, "month")));
+  const activeMobileWeek = mobileWeeks[mobileWeekIndex] ?? weeks[0];
   const today = moment().tz(TIMEZONE).format("YYYY-MM-DD");
 
   const handleRandomize = useCallback(() => {
@@ -196,12 +199,14 @@ export default function DinnerCalendar() {
   const prevMonth = () => {
     const m = month.clone().subtract(1, "month");
     setMonth(m);
+    setMobileWeekIndex(0);
     setAssignments(randomizeMonth(m, dinnerData, lunchData, breakfastData, schedule));
   };
 
   const nextMonth = () => {
     const m = month.clone().add(1, "month");
     setMonth(m);
+    setMobileWeekIndex(0);
     setAssignments(randomizeMonth(m, dinnerData, lunchData, breakfastData, schedule));
   };
   return (
@@ -248,122 +253,233 @@ export default function DinnerCalendar() {
           ))}
         </div>
 
-        {/* Calendar grid */}
+        {/* Calendar list view for mobile */}
         <div className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200">
-          {/* Day-of-week headers */}
-          <div className="grid grid-cols-7 border-b border-gray-200">
-            {WEEK_DAYS.map((d) => (
-              <div
-                key={d}
-                className="py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"
-              >
-                {d}
-              </div>
-            ))}
+          <div className="sm:hidden border-b border-gray-100 bg-gray-50 px-3 py-2 flex items-center justify-between">
+            <button
+              onClick={() => setMobileWeekIndex((prev) => Math.max(0, prev - 1))}
+              disabled={mobileWeekIndex === 0}
+              className="px-2 py-1 text-sm font-semibold text-gray-700 disabled:text-gray-300"
+              aria-label="Previous week"
+            >
+              ←
+            </button>
+            <div className="text-sm font-semibold text-gray-700">
+              {activeMobileWeek?.[0]?.format("MMM D")} - {activeMobileWeek?.[6]?.format("MMM D")}
+            </div>
+            <button
+              onClick={() => setMobileWeekIndex((prev) => Math.min(mobileWeeks.length - 1, prev + 1))}
+              disabled={mobileWeekIndex >= mobileWeeks.length - 1}
+              className="px-2 py-1 text-sm font-semibold text-gray-700 disabled:text-gray-300"
+              aria-label="Next week"
+            >
+              →
+            </button>
           </div>
 
-          {/* Weeks */}
-          {weeks.map((week, weekIdx) => (
-            <div key={weekIdx}>
-              {/* Day cells */}
-              <div className="grid grid-cols-7 border-b border-gray-100 last:border-b-0">
-                {week.map((day) => {
-                  const dateKey = day.format("YYYY-MM-DD");
-                  const inMonth = day.isSame(month, "month");
-                  const isToday = dateKey === today;
-                  const dayIdx = day.day();
-                  const colors = DAY_COLORS[dayIdx];
-                  const dayMeals = days[dateKey];
+          <div className="hidden sm:block">
+            <div className="grid grid-cols-7 border-b border-gray-200">
+              {WEEK_DAYS.map((d) => (
+                <div
+                  key={d}
+                  className="py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                >
+                  {d}
+                </div>
+              ))}
+            </div>
+          </div>
 
-                  return (
+          <div className="sm:hidden">
+            {activeMobileWeek?.map((day) => {
+              const dateKey = day.format("YYYY-MM-DD");
+              const dayIdx = day.day();
+              const isToday = dateKey === today;
+              const colors = DAY_COLORS[dayIdx];
+              const dayMeals = days[dateKey];
+              const isInMonth = day.isSame(month, "month");
+
+              return (
+                <div
+                  key={dateKey}
+                  className={`border-b border-gray-100 px-3 py-3 ${isInMonth ? colors.bg : "bg-gray-50"}`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
                     <div
-                      key={dateKey}
-                      className={[
-                        "border-r border-gray-100 last:border-r-0 min-h-32 p-1.5 flex flex-col",
-                        inMonth ? colors.bg : "bg-gray-50",
-                        inMonth ? "" : "opacity-40",
-                      ].join(" ")}
+                      className={`text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full ${
+                        isToday ? "bg-indigo-600 text-white" : "text-gray-700"
+                      }`}
                     >
-                      {/* Day number */}
-                      <div
-                        className={[
-                          "text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full mb-1 shrink-0",
-                          isToday
-                            ? "bg-indigo-600 text-white"
-                            : inMonth
-                            ? "text-gray-700"
-                            : "text-gray-400",
-                        ].join(" ")}
-                      >
-                        {day.date()}
-                      </div>
+                      {day.date()}
+                    </div>
+                    <div className="text-sm font-semibold text-gray-700">
+                      {WEEK_DAYS[dayIdx]}
+                    </div>
+                  </div>
 
-                      {/* Meals */}
-                      {inMonth && dayMeals && (
-                        <div className="flex flex-col gap-0.5 flex-1">
-                          {dayMeals.breakfast && (
-                            <button
-                              onClick={() =>
-                                handleRandomizeMeal(dateKey, "breakfast", dayIdx)
-                              }
-                              className="text-xs leading-snug text-left text-amber-700 hover:text-amber-900 font-medium line-clamp-1 transition-colors"
-                              title="Click to re-roll breakfast"
-                            >
-                              🍳 {dayMeals.breakfast}
-                            </button>
-                          )}
-                          {dayMeals.lunch && (
-                            <button
-                              onClick={() =>
-                                handleRandomizeMeal(dateKey, "lunch", dayIdx)
-                              }
-                              className="text-xs leading-snug text-left text-green-700 hover:text-green-900 font-medium line-clamp-1 transition-colors"
-                              title="Click to re-roll lunch"
-                            >
-                              🥪 {dayMeals.lunch}
-                            </button>
-                          )}
-                          {dayMeals.dinner && (
-                            <button
-                              onClick={() =>
-                                handleRandomizeMeal(dateKey, "dinner", dayIdx)
-                              }
-                              className="text-xs leading-snug text-left text-gray-800 hover:text-gray-600 font-medium line-clamp-2 transition-colors"
-                              title="Click to re-roll dinner"
-                            >
-                              🍽️ {dayMeals.dinner}
-                            </button>
-                          )}
-                        </div>
+                  {dayMeals && (
+                    <div className="space-y-1 text-sm">
+                      {dayMeals.breakfast && (
+                        <button
+                          onClick={() => handleRandomizeMeal(dateKey, "breakfast", dayIdx)}
+                          className="block w-full text-left text-amber-700 hover:text-amber-900 font-medium"
+                          title="Click to re-roll breakfast"
+                        >
+                          🍳 {dayMeals.breakfast}
+                        </button>
+                      )}
+                      {dayMeals.lunch && (
+                        <button
+                          onClick={() => handleRandomizeMeal(dateKey, "lunch", dayIdx)}
+                          className="block w-full text-left text-green-700 hover:text-green-900 font-medium"
+                          title="Click to re-roll lunch"
+                        >
+                          🥪 {dayMeals.lunch}
+                        </button>
+                      )}
+                      {dayMeals.dinner && (
+                        <button
+                          onClick={() => handleRandomizeMeal(dateKey, "dinner", dayIdx)}
+                          className="block w-full text-left text-gray-800 hover:text-gray-600 font-medium"
+                          title="Click to re-roll dinner"
+                        >
+                          🍽️ {dayMeals.dinner}
+                        </button>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-
-              {/* Weekly specials row */}
-              {specials[weekIdx] && week.some((d) => d.isSame(month, "month")) && (
-                <div className="grid grid-cols-2 border-b border-gray-100 last:border-b-0 bg-gray-50">
-                  <button
-                    onClick={() => handleRandomizeSpecial(weekIdx, "dessert")}
-                    className="text-xs p-2 text-left hover:bg-gray-100 transition-colors border-r border-gray-100"
-                    title="Click to re-roll dessert"
-                  >
-                    <span className="font-semibold text-pink-600">🍰 Dessert: </span>
-                    <span className="text-gray-700">{specials[weekIdx].dessert}</span>
-                  </button>
-                  <button
-                    onClick={() => handleRandomizeSpecial(weekIdx, "newThing")}
-                    className="text-xs p-2 text-left hover:bg-gray-100 transition-colors"
-                    title="Click to re-roll new thing"
-                  >
-                    <span className="font-semibold text-emerald-600">✨ New Thing: </span>
-                    <span className="text-gray-700">{specials[weekIdx].newThing}</span>
-                  </button>
+                  )}
                 </div>
-              )}
+              );
+            })}
+          </div>
+
+          {weeks.map((week, weekIdx) => {
+            const visibleDays = week.filter((day) => day.isSame(month, "month"));
+            if (visibleDays.length === 0) return null;
+
+            return (
+              <div key={weekIdx} className="hidden sm:block border-b border-gray-100 last:border-b-0">
+                <div className="hidden sm:block">
+                  <div className="grid grid-cols-7 border-b border-gray-100 last:border-b-0">
+                    {week.map((day) => {
+                      const dateKey = day.format("YYYY-MM-DD");
+                      const inMonth = day.isSame(month, "month");
+                      const isToday = dateKey === today;
+                      const dayIdx = day.day();
+                      const colors = DAY_COLORS[dayIdx];
+                      const dayMeals = days[dateKey];
+
+                      return (
+                        <div
+                          key={dateKey}
+                          className={[
+                            "border-r border-gray-100 last:border-r-0 min-h-32 p-1.5 flex flex-col",
+                            inMonth ? colors.bg : "bg-gray-50",
+                            inMonth ? "" : "opacity-40",
+                          ].join(" ")}
+                        >
+                          <div
+                            className={[
+                              "text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full mb-1 shrink-0",
+                              isToday
+                                ? "bg-indigo-600 text-white"
+                                : inMonth
+                                ? "text-gray-700"
+                                : "text-gray-400",
+                            ].join(" ")}
+                          >
+                            {day.date()}
+                          </div>
+
+                          {inMonth && dayMeals && (
+                            <div className="flex flex-col gap-0.5 flex-1">
+                              {dayMeals.breakfast && (
+                                <button
+                                  onClick={() => handleRandomizeMeal(dateKey, "breakfast", dayIdx)}
+                                  className="text-xs leading-snug text-left text-amber-700 hover:text-amber-900 font-medium line-clamp-1 transition-colors"
+                                  title="Click to re-roll breakfast"
+                                >
+                                  🍳 {dayMeals.breakfast}
+                                </button>
+                              )}
+                              {dayMeals.lunch && (
+                                <button
+                                  onClick={() => handleRandomizeMeal(dateKey, "lunch", dayIdx)}
+                                  className="text-xs leading-snug text-left text-green-700 hover:text-green-900 font-medium line-clamp-1 transition-colors"
+                                  title="Click to re-roll lunch"
+                                >
+                                  🥪 {dayMeals.lunch}
+                                </button>
+                              )}
+                              {dayMeals.dinner && (
+                                <button
+                                  onClick={() => handleRandomizeMeal(dateKey, "dinner", dayIdx)}
+                                  className="text-xs leading-snug text-left text-gray-800 hover:text-gray-600 font-medium line-clamp-2 transition-colors"
+                                  title="Click to re-roll dinner"
+                                >
+                                  🍽️ {dayMeals.dinner}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {weeks.some((week) => week.some((day) => day.isSame(month, "month"))) && (
+            <div className="border-t border-gray-100 bg-gray-50">
+              {(() => {
+                const activeWeekIdx = mobileWeeks.findIndex((week) => week[0]?.isSame(activeMobileWeek?.[0], "day"));
+                const weekSpecials = specials[activeWeekIdx >= 0 ? activeWeekIdx : 0];
+                if (!weekSpecials) return null;
+
+                return (
+                  <div className="border-b border-gray-100 last:border-b-0">
+                    <div className="sm:hidden space-y-1 p-3">
+                      <button
+                        onClick={() => handleRandomizeSpecial(activeWeekIdx >= 0 ? activeWeekIdx : 0, "dessert")}
+                        className="block w-full text-left text-sm text-pink-600 font-semibold"
+                        title="Click to re-roll dessert"
+                      >
+                        🍰 {weekSpecials.dessert}
+                      </button>
+                      <button
+                        onClick={() => handleRandomizeSpecial(activeWeekIdx >= 0 ? activeWeekIdx : 0, "newThing")}
+                        className="block w-full text-left text-sm text-emerald-600 font-semibold"
+                        title="Click to re-roll new thing"
+                      >
+                        ✨ {weekSpecials.newThing}
+                      </button>
+                    </div>
+
+                    <div className="hidden sm:grid sm:grid-cols-2">
+                      <button
+                        onClick={() => handleRandomizeSpecial(activeWeekIdx >= 0 ? activeWeekIdx : 0, "dessert")}
+                        className="text-xs p-2 text-left hover:bg-gray-100 transition-colors border-r border-gray-100"
+                        title="Click to re-roll dessert"
+                      >
+                        <span className="font-semibold text-pink-600">🍰 Dessert: </span>
+                        <span className="text-gray-700">{weekSpecials.dessert}</span>
+                      </button>
+                      <button
+                        onClick={() => handleRandomizeSpecial(activeWeekIdx >= 0 ? activeWeekIdx : 0, "newThing")}
+                        className="text-xs p-2 text-left hover:bg-gray-100 transition-colors"
+                        title="Click to re-roll new thing"
+                      >
+                        <span className="font-semibold text-emerald-600">✨ New Thing: </span>
+                        <span className="text-gray-700">{weekSpecials.newThing}</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
-          ))}
+          )}
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-4">
