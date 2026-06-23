@@ -15,6 +15,23 @@ type DayMeals = { breakfast: string; lunch: string; dinner: string };
 type DayAssignments = Record<string, DayMeals>; // "YYYY-MM-DD" -> meals
 type WeeklySpecial = { dessert: string; newThing: string };
 
+function pickRandomWithHistory(
+  items: string[],
+  used: Set<string>,
+  exclude?: string
+): string {
+  if (items.length === 0) return "";
+
+  const filteredExclude =
+    exclude !== undefined ? items.filter((item) => item !== exclude) : items;
+  const unseen = filteredExclude.filter((item) => !used.has(item));
+  const pool = unseen.length > 0 ? unseen : filteredExclude;
+
+  const picked = pickRandom(pool);
+  used.add(picked);
+  return picked;
+}
+
 function buildCalendarWeeks(month: Moment): Moment[][] {
   const start = month.clone().startOf("month").startOf("week");
   const end = month.clone().endOf("month").endOf("week");
@@ -42,6 +59,14 @@ function randomizeMonth(
   const days: DayAssignments = {};
   const specials: WeeklySpecial[] = [];
 
+  // Keep weekly rows fresh: avoid repeating the same dinner on the same weekday
+  // and avoid repeating breakfast/lunch/specials until a pool is exhausted.
+  const usedDinnerByDay = new Map<number, Set<string>>();
+  const usedBreakfast = new Set<string>();
+  const usedLunch = new Set<string>();
+  const usedDessert = new Set<string>();
+  const usedNewThing = new Set<string>();
+
   const allBreakfast = Object.values(breakfastData).flat();
   const allLunch = Object.values(lunchData).flat();
 
@@ -54,18 +79,24 @@ function randomizeMonth(
 
       // Dinner — uses per-day schedule
       const dinnerList = (schedule[dayIdx] ?? []).flatMap((key) => dinnerData[key] ?? []);
+      const usedDinnerForDay = usedDinnerByDay.get(dayIdx) ?? new Set<string>();
+      usedDinnerByDay.set(dayIdx, usedDinnerForDay);
       let dinner = "";
       if (dinnerList.length > 0) {
         dinner =
           dayIdx === 0 && satDinner
-            ? pickRandom(dinnerList, satDinner)
-            : pickRandom(dinnerList);
+            ? pickRandomWithHistory(dinnerList, usedDinnerForDay, satDinner)
+            : pickRandomWithHistory(dinnerList, usedDinnerForDay);
       }
       if (dayIdx === 6) satDinner = dinner;
 
       // Breakfast + Lunch — drawn from full combined pools
-      const breakfast = allBreakfast.length > 0 ? pickRandom(allBreakfast) : "";
-      const lunch = allLunch.length > 0 ? pickRandom(allLunch) : "";
+      const breakfast =
+        allBreakfast.length > 0
+          ? pickRandomWithHistory(allBreakfast, usedBreakfast)
+          : "";
+      const lunch =
+        allLunch.length > 0 ? pickRandomWithHistory(allLunch, usedLunch) : "";
 
       days[dateKey] = { breakfast, lunch, dinner };
     }
@@ -74,8 +105,14 @@ function randomizeMonth(
     const dessertList = dinnerData.Dessert ?? [];
     const newThingList = dinnerData.NewThings ?? [];
     specials.push({
-      dessert: dessertList.length > 0 ? pickRandom(dessertList) : "",
-      newThing: newThingList.length > 0 ? pickRandom(newThingList) : "",
+      dessert:
+        dessertList.length > 0
+          ? pickRandomWithHistory(dessertList, usedDessert)
+          : "",
+      newThing:
+        newThingList.length > 0
+          ? pickRandomWithHistory(newThingList, usedNewThing)
+          : "",
     });
   }
 
@@ -100,6 +137,8 @@ export default function DinnerCalendar() {
   // Populate once meal lists are loaded from server
   useEffect(() => {
     if (!loaded) return;
+    // This seeds the randomized calendar once lists/schedule are loaded.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAssignments(randomizeMonth(month, dinnerData, lunchData, breakfastData, schedule));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded]);

@@ -17,6 +17,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Dinner Randomizer",
   description: "Random meal planner for the week",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [{ url: "/dinner-icon.png", type: "image/png" }],
+    shortcut: [{ url: "/dinner-icon.png", type: "image/png" }],
+    apple: [{ url: "/dinner-icon.png", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({
