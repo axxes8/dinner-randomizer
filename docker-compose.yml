@@ -1,9 +1,10 @@
 services:
   dinner-randomizer:
+    # Build locally from this repo; do not attempt to pull from a registry.
+    pull_policy: never
     build:
       context: .
       dockerfile: Dockerfile
-    image: dinner-randomizer:latest
     container_name: dinner-randomizer
     ports:
       - "3000:3000"
