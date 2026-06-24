@@ -217,14 +217,14 @@ export default function DinnerCalendar() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-8 print:p-0">
       {/* Header */}
       <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 print:mb-2">
           <div className="flex items-center gap-3">
             <button
               onClick={prevMonth}
-              className="px-3 py-2 rounded-lg bg-white border border-gray-200 shadow-sm hover:bg-gray-100 transition-colors text-lg font-bold"
+              className="px-3 py-2 rounded-lg bg-white border border-gray-200 shadow-sm hover:bg-gray-100 transition-colors text-lg font-bold print:hidden"
               aria-label="Previous month"
             >
               ‹
@@ -234,13 +234,13 @@ export default function DinnerCalendar() {
             </h1>
             <button
               onClick={nextMonth}
-              className="px-3 py-2 rounded-lg bg-white border border-gray-200 shadow-sm hover:bg-gray-100 transition-colors text-lg font-bold"
+              className="px-3 py-2 rounded-lg bg-white border border-gray-200 shadow-sm hover:bg-gray-100 transition-colors text-lg font-bold print:hidden"
               aria-label="Next month"
             >
               ›
             </button>
           </div>
-          <div className="flex flex-wrap items-center gap-2 print-hidden">
+          <div className="flex flex-wrap items-center gap-2 print:hidden">
             <button
               onClick={handlePrint}
               className="px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 font-semibold shadow-sm hover:bg-gray-100 active:bg-gray-200 transition-colors"
@@ -257,7 +257,7 @@ export default function DinnerCalendar() {
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap gap-2 mb-4 text-xs font-medium">
+        <div className="flex flex-wrap gap-2 mb-4 text-xs font-medium print:hidden">
           {[1, 2, 3, 4, 5, 6, 0].map((dayIdx) => (
             <span
               key={dayIdx}
@@ -270,7 +270,7 @@ export default function DinnerCalendar() {
 
         {/* Calendar list view for mobile */}
         <div className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 print-card">
-          <div className="sm:hidden border-b border-gray-100 bg-gray-50 px-3 py-2 flex items-center justify-between print-hidden">
+          <div className="sm:hidden border-b border-gray-100 bg-gray-50 px-3 py-2 flex items-center justify-between print:hidden">
             <button
               onClick={() => setMobileWeekIndex((prev) => Math.max(0, prev - 1))}
               disabled={mobileWeekIndex === 0}
@@ -411,7 +411,7 @@ export default function DinnerCalendar() {
                               {dayMeals.breakfast && (
                                 <button
                                   onClick={() => handleRandomizeMeal(dateKey, "breakfast", dayIdx)}
-                                  className="text-xs leading-snug text-left text-amber-700 hover:text-amber-900 font-medium line-clamp-1 transition-colors"
+                                  className="text-xs leading-snug text-left text-amber-700 hover:text-amber-900 font-medium transition-colors"
                                   title="Click to re-roll breakfast"
                                 >
                                   🍳 {dayMeals.breakfast}
@@ -420,7 +420,7 @@ export default function DinnerCalendar() {
                               {dayMeals.lunch && (
                                 <button
                                   onClick={() => handleRandomizeMeal(dateKey, "lunch", dayIdx)}
-                                  className="text-xs leading-snug text-left text-green-700 hover:text-green-900 font-medium line-clamp-1 transition-colors"
+                                  className="text-xs leading-snug text-left text-green-700 hover:text-green-900 font-medium transition-colors"
                                   title="Click to re-roll lunch"
                                 >
                                   🥪 {dayMeals.lunch}
@@ -454,7 +454,7 @@ export default function DinnerCalendar() {
                 if (!weekSpecials) return null;
 
                 return (
-                  <div className="border-b border-gray-100 last:border-b-0">
+                  <div className="border-b border-gray-100 last:border-b-0 print:hidden">
                     <div className="sm:hidden space-y-1 p-3">
                       <button
                         onClick={() => handleRandomizeSpecial(activeWeekIdx >= 0 ? activeWeekIdx : 0, "dessert")}
@@ -497,7 +497,7 @@ export default function DinnerCalendar() {
           )}
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-4 print-hidden">
+        <p className="text-center text-xs text-gray-400 mt-4 print:hidden">
           Click any meal or special to re-roll just that item.
         </p>
       </div>

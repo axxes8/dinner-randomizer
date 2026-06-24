@@ -25,10 +25,6 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-.print-hidden {
-  display: none !important;
-}
-
 @media print {
   body {
     background: #ffffff !important;
