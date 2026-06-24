@@ -9,7 +9,7 @@ import {
   useCallback,
   ReactNode,
 } from "react";
-import { getDefaultMealLists, DEFAULT_DAY_SCHEDULE } from "./dinnerData";
+import { getEmptyMealLists } from "./dinnerData";
 import type { MealLists, DaySchedule } from "./dinnerData";
 
 export type { MealLists, DaySchedule };
@@ -30,8 +30,8 @@ type MealsContextValue = {
 const MealsContext = createContext<MealsContextValue | null>(null);
 
 export function MealsProvider({ children }: { children: ReactNode }) {
-  const [lists, setLists] = useState<MealLists>(getDefaultMealLists);
-  const [schedule, setSchedule] = useState<DaySchedule>(DEFAULT_DAY_SCHEDULE);
+  const [lists, setLists] = useState<MealLists>(getEmptyMealLists);
+  const [schedule, setSchedule] = useState<DaySchedule>({});
   const [loaded, setLoaded] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -43,20 +43,20 @@ export function MealsProvider({ children }: { children: ReactNode }) {
         const { schedule: rawSchedule, ...rawLists } = data;
         setLists(rawLists as MealLists);
         if (rawSchedule && typeof rawSchedule === "object") {
-          const parsed: DaySchedule = { ...DEFAULT_DAY_SCHEDULE };
+          const parsed: DaySchedule = {};
           for (let i = 0; i <= 6; i++) {
             const val = rawSchedule[i] ?? rawSchedule[String(i)];
             if (val !== undefined) {
-              // Upgrade old single-string format to string[]
               parsed[i] = Array.isArray(val) ? (val as string[]) : [String(val)];
             }
           }
           setSchedule(parsed);
+        } else {
+          setSchedule({});
         }
         setLoaded(true);
       })
       .catch(() => {
-        // Server unreachable — fall back to built-in defaults
         setLoaded(true);
       });
   }, []);
@@ -129,8 +129,8 @@ export function MealsProvider({ children }: { children: ReactNode }) {
   );
 
   const resetToDefaults = useCallback(() => {
-    setLists(getDefaultMealLists());
-    setSchedule(DEFAULT_DAY_SCHEDULE);
+    setLists(getEmptyMealLists());
+    setSchedule({});
   }, []);
 
   const setDaySchedule = useCallback((day: number, categories: string[]) => {

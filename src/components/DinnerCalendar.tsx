@@ -209,6 +209,13 @@ export default function DinnerCalendar() {
     setMobileWeekIndex(0);
     setAssignments(randomizeMonth(m, dinnerData, lunchData, breakfastData, schedule));
   };
+
+  const handlePrint = () => {
+    if (typeof window !== "undefined") {
+      window.print();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       {/* Header */}
@@ -233,12 +240,20 @@ export default function DinnerCalendar() {
               ›
             </button>
           </div>
-          <button
-            onClick={handleRandomize}
-            className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold shadow hover:bg-indigo-700 active:bg-indigo-800 transition-colors"
-          >
-            🎲 Randomize Month
-          </button>
+          <div className="flex flex-wrap items-center gap-2 print-hidden">
+            <button
+              onClick={handlePrint}
+              className="px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 font-semibold shadow-sm hover:bg-gray-100 active:bg-gray-200 transition-colors"
+            >
+              🖨️ Print
+            </button>
+            <button
+              onClick={handleRandomize}
+              className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold shadow hover:bg-indigo-700 active:bg-indigo-800 transition-colors"
+            >
+              🎲 Randomize Month
+            </button>
+          </div>
         </div>
 
         {/* Legend */}
@@ -254,8 +269,8 @@ export default function DinnerCalendar() {
         </div>
 
         {/* Calendar list view for mobile */}
-        <div className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200">
-          <div className="sm:hidden border-b border-gray-100 bg-gray-50 px-3 py-2 flex items-center justify-between">
+        <div className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 print-card">
+          <div className="sm:hidden border-b border-gray-100 bg-gray-50 px-3 py-2 flex items-center justify-between print-hidden">
             <button
               onClick={() => setMobileWeekIndex((prev) => Math.max(0, prev - 1))}
               disabled={mobileWeekIndex === 0}
@@ -482,7 +497,7 @@ export default function DinnerCalendar() {
           )}
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-4">
+        <p className="text-center text-xs text-gray-400 mt-4 print-hidden">
           Click any meal or special to re-roll just that item.
         </p>
       </div>

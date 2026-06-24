@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
-import { getDefaultMealLists, DEFAULT_DAY_SCHEDULE } from "@/lib/dinnerData";
 import type { MealLists } from "@/lib/dinnerData";
 
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), "data");
@@ -18,18 +17,15 @@ export async function GET() {
   try {
     await ensureDataDir();
     const content = await readFile(DATA_FILE, "utf-8");
-    const stored = JSON.parse(content) as MealLists & { schedule?: Record<string, string> };
-    const defaults = getDefaultMealLists();
-    // Merge so any newly added default categories appear for existing installs
+    const stored = JSON.parse(content) as MealLists & { schedule?: Record<string, unknown> };
     return NextResponse.json({
-      dinner: { ...defaults.dinner, ...(stored.dinner ?? {}) },
-      lunch: { ...defaults.lunch, ...(stored.lunch ?? {}) },
-      breakfast: { ...defaults.breakfast, ...(stored.breakfast ?? {}) },
-      schedule: stored.schedule ?? DEFAULT_DAY_SCHEDULE,
+      dinner: stored.dinner ?? {},
+      lunch: stored.lunch ?? {},
+      breakfast: stored.breakfast ?? {},
+      schedule: stored.schedule ?? {},
     });
   } catch {
-    // File missing or unreadable — return built-in defaults
-    return NextResponse.json({ ...getDefaultMealLists(), schedule: DEFAULT_DAY_SCHEDULE });
+    return NextResponse.json({ dinner: {}, lunch: {}, breakfast: {}, schedule: {} });
   }
 }
 

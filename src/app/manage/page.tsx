@@ -100,7 +100,7 @@ export default function ManagePage() {
                 : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 shadow-sm"
             }`}
           >
-            {confirmReset ? "Confirm Reset?" : "Reset to Defaults"}
+            {confirmReset ? "Confirm Clear?" : "Clear Lists"}
           </button>
         </div>
 

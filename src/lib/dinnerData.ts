@@ -249,3 +249,11 @@ export function getDefaultMealLists(): MealLists {
     ),
   };
 }
+
+export function getEmptyMealLists(): MealLists {
+  return {
+    dinner: {},
+    lunch: {},
+    breakfast: {},
+  };
+}
