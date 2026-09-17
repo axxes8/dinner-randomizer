@@ -52,8 +52,8 @@ function escapeCalendarText(value: string): string {
   return value.replace(/([\\,;])/g, "\\$1").replace(/\r?\n/g, "\\n");
 }
 
-function formatCalendarDate(date: Moment): string {
-  return date.format("YYYYMMDD");
+function formatCalendarDateTime(date: Moment): string {
+  return date.format("YYYYMMDD[T]HHmmss");
 }
 
 function randomizeMonth(
@@ -229,15 +229,16 @@ export default function DinnerCalendar() {
       .filter(([dateKey, dayMeals]) => dayMeals.dinner && moment(dateKey).isSame(month, "month"))
       .map(([dateKey, dayMeals]) => {
         const start = moment.tz(dateKey, "YYYY-MM-DD", TIMEZONE);
-        const end = start.clone().add(1, "day");
+        start.hour(18);
+        const end = start.clone().add(1, "hour");
         const uid = `${dateKey}-dinner@dinner-randomizer`;
 
         return [
           "BEGIN:VEVENT",
           `UID:${uid}`,
           `DTSTAMP:${moment.utc().format("YYYYMMDDTHHmmss[Z]")}`,
-          `DTSTART;VALUE=DATE:${formatCalendarDate(start)}`,
-          `DTEND;VALUE=DATE:${formatCalendarDate(end)}`,
+          `DTSTART;TZID=${TIMEZONE}:${formatCalendarDateTime(start)}`,
+          `DTEND;TZID=${TIMEZONE}:${formatCalendarDateTime(end)}`,
           `SUMMARY:${escapeCalendarText(`Dinner: ${dayMeals.dinner}`)}`,
           "END:VEVENT",
         ].join("\r\n");
