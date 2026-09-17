@@ -260,7 +260,8 @@ export default function DinnerCalendar() {
     const isAppleDevice = /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent);
 
     if (isAppleDevice) {
-      window.location.assign(calendarUrl.replace(/^https?:/, "webcal:"));
+      // Opening the ICS response lets Safari/Calendar offer "Add All".
+      window.location.assign(calendarUrl);
       return;
     }
 
