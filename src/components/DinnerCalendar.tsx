@@ -254,6 +254,16 @@ export default function DinnerCalendar() {
       "END:VCALENDAR",
       "",
     ].join("\r\n");
+
+    const encodedCalendar = encodeURIComponent(calendar);
+    const calendarUrl = `${window.location.origin}/api/calendar?calendar=${encodedCalendar}`;
+    const isAppleDevice = /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent);
+
+    if (isAppleDevice) {
+      window.location.assign(calendarUrl.replace(/^https?:/, "webcal:"));
+      return;
+    }
+
     const blob = new Blob([calendar], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -299,7 +309,7 @@ export default function DinnerCalendar() {
               disabled={!Object.values(days).some((day) => day.dinner)}
               className="px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 font-semibold shadow-sm hover:bg-gray-100 active:bg-gray-200 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             >
-              📅 Add to Calendar
+              📅 Add to Apple Calendar
             </button>
             <button
               onClick={handleRandomize}
