@@ -48,6 +48,14 @@ function buildCalendarWeeks(month: Moment): Moment[][] {
   return weeks;
 }
 
+function escapeCalendarText(value: string): string {
+  return value.replace(/([\\,;])/g, "\\$1").replace(/\r?\n/g, "\\n");
+}
+
+function formatCalendarDate(date: Moment): string {
+  return date.format("YYYYMMDD");
+}
+
 function randomizeMonth(
   month: Moment,
   dinnerData: Record<string, string[]>,
@@ -216,6 +224,45 @@ export default function DinnerCalendar() {
     }
   };
 
+  const handleAddToCalendar = () => {
+    const events = Object.entries(days)
+      .filter(([dateKey, dayMeals]) => dayMeals.dinner && moment(dateKey).isSame(month, "month"))
+      .map(([dateKey, dayMeals]) => {
+        const start = moment.tz(dateKey, "YYYY-MM-DD", TIMEZONE);
+        const end = start.clone().add(1, "day");
+        const uid = `${dateKey}-dinner@dinner-randomizer`;
+
+        return [
+          "BEGIN:VEVENT",
+          `UID:${uid}`,
+          `DTSTAMP:${moment.utc().format("YYYYMMDDTHHmmss[Z]")}`,
+          `DTSTART;VALUE=DATE:${formatCalendarDate(start)}`,
+          `DTEND;VALUE=DATE:${formatCalendarDate(end)}`,
+          `SUMMARY:${escapeCalendarText(`Dinner: ${dayMeals.dinner}`)}`,
+          "END:VEVENT",
+        ].join("\r\n");
+      });
+
+    if (events.length === 0) return;
+
+    const calendar = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Dinner Randomizer//Dinner Calendar//EN",
+      `X-WR-CALNAME:${escapeCalendarText(`Dinners - ${month.format("MMMM YYYY")}`)}`,
+      ...events,
+      "END:VCALENDAR",
+      "",
+    ].join("\r\n");
+    const blob = new Blob([calendar], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `dinners-${month.format("YYYY-MM")}.ics`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8 print:p-0">
       {/* Header */}
@@ -246,6 +293,13 @@ export default function DinnerCalendar() {
               className="px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 font-semibold shadow-sm hover:bg-gray-100 active:bg-gray-200 transition-colors"
             >
               🖨️ Print
+            </button>
+            <button
+              onClick={handleAddToCalendar}
+              disabled={!Object.values(days).some((day) => day.dinner)}
+              className="px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 font-semibold shadow-sm hover:bg-gray-100 active:bg-gray-200 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              📅 Add to Calendar
             </button>
             <button
               onClick={handleRandomize}
